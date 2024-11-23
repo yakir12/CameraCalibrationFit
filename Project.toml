@@ -1,7 +1,7 @@
 name = "CameraCalibrationFit"
 uuid = "c7b80976-263e-4209-b0ba-2d1aff876d91"
 authors = ["Yakir Gagnon <12.yakir@gmail.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CameraCalibrationMeta = "57a0c4f1-a71d-4b63-b13d-9a982f9bf6d8"
