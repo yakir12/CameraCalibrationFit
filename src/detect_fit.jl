@@ -23,22 +23,20 @@ end
 Wraps OpenCV function to auto-detect corners in an image.
 """
 function _detect_corners(file, n_corners)
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
-    img = cv2.imread(file)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # ret, py_corners = cv2.findChessboardCorners(gray, n_corners, cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_FAST_CHECK)
-    ret, py_corners = cv2.findChessboardCornersSB(gray, n_corners, cv2.CALIB_CB_NORMALIZE_IMAGE + # Normalize the image gamma with equalizeHist before detection.
-                                                  cv2.CALIB_CB_EXHAUSTIVE + # Run an exhaustive search to improve detection rate.
-                                                  cv2.CALIB_CB_ACCURACY # Up sample input image to improve sub-pixel accuracy due to aliasing effects.
+    img = load(file)
+    sz = size(img)
+    gray = reshape(collect(rawview(channelview(Gray.(img)))), 1, sz...)
+    n_corners = OpenCV.Size{Int32}(n_corners...)
+    _cv_corners = OpenCV.Mat(Array{Float32}(undef, 2, 1, 40))
+    ret, cv_corners = OpenCV.findChessboardCornersSB(gray, n_corners, _cv_corners, OpenCV.CALIB_CB_NORMALIZE_IMAGE + # Normalize the image gamma with equalizeHist before detection.
+                                                  OpenCV.CALIB_CB_EXHAUSTIVE + # Run an exhaustive search to improve detection rate.
+                                                  OpenCV.CALIB_CB_ACCURACY # Up sample input image to improve sub-pixel accuracy due to aliasing effects.
                                                  )
-
     !Bool(ret) && return missing
-
-    ref_corners = cv2.cornerSubPix(gray, py_corners, (11,11),(-1,-1), criteria)
-    flp_corners = np.flip(ref_corners, axis = 2)
-    corners = convert_from_py_corners(flp_corners, n_corners)
+    criteria = OpenCV.TermCriteria(OpenCV.TERM_CRITERIA_EPS + OpenCV.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    ref_corners = OpenCV.cornerSubPix(gray, cv_corners, OpenCV.Size{Int32}(11,11), OpenCV.Size{Int32}(-1,-1), criteria)
+    # flp_corners = np.flip(ref_corners, axis = 2)
+    corners = RowCol.(eachslice(ref_corners, dims = 3))
     return (file, corners)
 end
 
@@ -47,12 +45,17 @@ end
 Wraps OpenCV function to fit a camera model to given object and image points.
 """
 function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspect)
-    flags = cv2.CALIB_ZERO_TANGENT_DIST + cv2.CALIB_FIX_K3 + cv2.CALIB_FIX_K2 + (with_distortion ? 0 : cv2.CALIB_FIX_K1) + cv2.CALIB_FIX_ASPECT_RATIO
 
-    cammat = np.eye(3, 3)
-    cammat[0] = aspect
+    with_distortion = false
+    aspect = 1
 
-    _, py_mtx, py_dist, py_rvecs, py_tvecs = cv2.calibrateCamera(convert_to_py_objpoints(objpoints, length(imgpointss)), convert_to_py_imgpointss(imgpointss), np.flip(sz), cammat, nothing; flags)
+    flags = OpenCV.CALIB_ZERO_TANGENT_DIST + OpenCV.CALIB_FIX_K3 + OpenCV.CALIB_FIX_K2 + (with_distortion ? 0 : OpenCV.CALIB_FIX_K1) + OpenCV.CALIB_FIX_ASPECT_RATIO
+    cammat = collect(I(3))
+    cammat[1,:] .= aspect
+
+    _, py_mtx, py_dist, py_rvecs, py_tvecs = 
+
+    OpenCV.calibrateCamera(OpenCV.Mat(Int32.(reshape(reduce(hcat, objpoints), 3, 1, 40))), imgpointss, sz, cammat, nothing; flags)
 
     k, _ = PyArray(py_dist)
     @assert with_distortion || k == 0 "distortion was $with_distortion but k isn't zero:" k
@@ -72,7 +75,7 @@ function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspec
 end
 
 function detect_fit(_files, n_corners, with_distortion, aspect)
-    fi = skipmissing(_detect_corners.(_files, Ref(n_corners)))
+    fi = skipmissing(_detect_corners.(_files, Ref(n_corners), Ref(sz)))
     @assert !isempty(fi) "No checkers were detected in any of the images, perhaps try a different `n_corners`."
     files = first.(fi)
     imgpointss = last.(fi)
@@ -84,6 +87,9 @@ function detect_fit(_files, n_corners, with_distortion, aspect)
 
     return (; files, objpoints, imgpointss, sz, k, Rs, ts, frow, fcol, crow, ccol)
 end
+
+    _files = readdir("example", join=true)
+    n_corners = (5, 8)
 
 
 
