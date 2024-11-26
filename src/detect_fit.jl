@@ -55,8 +55,13 @@ function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspec
 
     _, py_mtx, py_dist, py_rvecs, py_tvecs = 
 
+    nfiles = length(files)
 
-    OpenCV.calibrateCamera(fill(Int32.(reshape(reduce(hcat, objpoints), 3, 1, prod(n_corners))), length(files)), [reshape(reduce(hcat, imgpoints), 2, 1, 40) for imgpoints in imgpointss])#, sz, cammat, nothing; flags)
+    objectPoints = fill(vec(Vector{Float32}.(objpoints)), length(files))
+
+    objectPoints = fill(vec(Vector{Int32}.(objpoints)), length(files))
+
+    OpenCV.calibrateCamera(objectPoints, [reshape(reduce(hcat, imgpoints), 2, 1, 40) for imgpoints in imgpointss])#, sz, cammat, nothing; flags)
 
     OpenCV.calibrateCamera(OpenCV.Mat(Int32.(reshape(reduce(hcat, objpoints), 3, 1, 40))), imgpointss, sz, cammat, nothing; flags)
 
