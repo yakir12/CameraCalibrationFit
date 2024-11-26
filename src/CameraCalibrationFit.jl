@@ -4,7 +4,7 @@ using OpenCV
 using CameraCalibrationMeta
 using Statistics, LinearAlgebra
 using FileIO, StaticArrays, CoordinateTransformations, Rotations, Polynomials
-using ImageTransformations, Colors, ImageDraw
+using ImageBase, ImageTransformations, Colors, ImageDraw
 
 include("detect_fit.jl")
 include("buildcalibrations.jl")

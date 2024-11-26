@@ -25,16 +25,16 @@ Wraps OpenCV function to auto-detect corners in an image.
 function _detect_corners(file, n_corners)
     img = load(file)
     sz = size(img)
-    gray = reshape(collect(rawview(channelview(Gray.(img)))), 1, sz...)
-    n_corners = OpenCV.Size{Int32}(n_corners...)
+    gry = reshape(collect(rawview(channelview(Gray.(img)))), 1, sz...)
+    cv_n_corners = OpenCV.Size{Int32}(n_corners...)
     _cv_corners = OpenCV.Mat(Array{Float32}(undef, 2, 1, 40))
-    ret, cv_corners = OpenCV.findChessboardCornersSB(gray, n_corners, _cv_corners, OpenCV.CALIB_CB_NORMALIZE_IMAGE + # Normalize the image gamma with equalizeHist before detection.
+    ret, cv_corners = OpenCV.findChessboardCornersSB(gry, cv_n_corners, _cv_corners, OpenCV.CALIB_CB_NORMALIZE_IMAGE + # Normalize the image gamma with equalizeHist before detection.
                                                   OpenCV.CALIB_CB_EXHAUSTIVE + # Run an exhaustive search to improve detection rate.
                                                   OpenCV.CALIB_CB_ACCURACY # Up sample input image to improve sub-pixel accuracy due to aliasing effects.
                                                  )
     !Bool(ret) && return missing
     criteria = OpenCV.TermCriteria(OpenCV.TERM_CRITERIA_EPS + OpenCV.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    ref_corners = OpenCV.cornerSubPix(gray, cv_corners, OpenCV.Size{Int32}(11,11), OpenCV.Size{Int32}(-1,-1), criteria)
+    ref_corners = OpenCV.cornerSubPix(gry, cv_corners, OpenCV.Size{Int32}(11,11), OpenCV.Size{Int32}(-1,-1), criteria)
     # flp_corners = np.flip(ref_corners, axis = 2)
     corners = RowCol.(eachslice(ref_corners, dims = 3))
     return (file, corners)
@@ -54,6 +54,9 @@ function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspec
     cammat[1,:] .= aspect
 
     _, py_mtx, py_dist, py_rvecs, py_tvecs = 
+
+
+    OpenCV.calibrateCamera(fill(Int32.(reshape(reduce(hcat, objpoints), 3, 1, prod(n_corners))), length(files)), [reshape(reduce(hcat, imgpoints), 2, 1, 40) for imgpoints in imgpointss])#, sz, cammat, nothing; flags)
 
     OpenCV.calibrateCamera(OpenCV.Mat(Int32.(reshape(reduce(hcat, objpoints), 3, 1, 40))), imgpointss, sz, cammat, nothing; flags)
 
@@ -75,15 +78,15 @@ function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspec
 end
 
 function detect_fit(_files, n_corners, with_distortion, aspect)
-    fi = skipmissing(_detect_corners.(_files, Ref(n_corners), Ref(sz)))
+    fi = skipmissing(_detect_corners.(_files, Ref(n_corners)))
     @assert !isempty(fi) "No checkers were detected in any of the images, perhaps try a different `n_corners`."
     files = first.(fi)
     imgpointss = last.(fi)
 
     objpoints = get_object_points(n_corners)
-    sz = round.(Int, reverse(size(load(files[1]))))
+    sz = reverse(size(load(files[1])))
 
-    k, Rs, ts, frow, fcol, crow, ccol = fit_model(sz, objpoints, imgpointss, n_corners, with_distortion, aspect)
+    k, Rs, ts, frow, fcol, crow, ccol = fit_model(sz, fill(objpoints, length(files)), imgpointss, n_corners, with_distortion, aspect)
 
     return (; files, objpoints, imgpointss, sz, k, Rs, ts, frow, fcol, crow, ccol)
 end
