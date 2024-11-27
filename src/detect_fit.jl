@@ -46,14 +46,33 @@ Wraps OpenCV function to fit a camera model to given object and image points.
 """
 function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspect)
 
+    fun(x::Vector{Union{Int, String}}) = x
+    x = Vector{Int}(undef, 3)
+    x = Union{Int, String}[i for i in 1:3]
+    fun(x)
+
+    objectPoints = Union{OpenCV.CxxMat, AbstractArray{Float32, 3}}[rand(Float32, 3, 1, 40) for _ in 1:5]
+
+    imagePoints = [rand(Float32, 3, 1, 40) for _ in 1:5]
+    imageSize = OpenCV.Size{Int32}(100, 150)
+    cameraMatrix = rand(Float32, 3, 3, 40)
+    distCoeffs = rand(Float32, 3, 3, 40)
+
+    OpenCV.calibrateCamera(objectPoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
+                           imagePoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
+                           imageSize::OpenCV.Size{Int32},
+                           cameraMatrix::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}},
+                           distCoeffs::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}})
+
+
+
+
     with_distortion = false
     aspect = 1
 
     flags = OpenCV.CALIB_ZERO_TANGENT_DIST + OpenCV.CALIB_FIX_K3 + OpenCV.CALIB_FIX_K2 + (with_distortion ? 0 : OpenCV.CALIB_FIX_K1) + OpenCV.CALIB_FIX_ASPECT_RATIO
     cammat = collect(I(3))
     cammat[1,:] .= aspect
-
-    _, py_mtx, py_dist, py_rvecs, py_tvecs = 
 
     nfiles = length(files)
 
