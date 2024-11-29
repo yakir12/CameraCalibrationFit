@@ -1,10 +1,3 @@
-# the following convertion functions are necessary due to some overly eager type checking in the python functions.
-convert_from_py_corners(py_corners, n_corners) = reshape(RowCol.(eachslice(PyArray(py_corners); dims = 1)), n_corners)
-
-convert_to_py_objpoints(objpoints, n) = PyList(fill(np.array(Float32.(reshape(reduce((x1, x2) -> hcat(x1, Vector(x2)), objpoints)', (1, length(objpoints), 3)))), n))
-
-convert_to_py_imgpointss(imgpointss) = PyList([np.array(reshape(reduce((x1, x2) -> hcat(x1, Vector(x2)), imgpoints)', 1, length(imgpoints), 2)) for imgpoints in imgpointss])
-
 """
     get_object_points
 Produce the real-world locations of the corners of the checkerboard.
@@ -46,109 +39,35 @@ Wraps OpenCV function to fit a camera model to given object and image points.
 """
 function fit_model(sz, objpoints, imgpointss, n_corners,  with_distortion, aspect)
 
-    fun(x::Vector{Union{Int, String}}) = x
-    x = Vector{Int}(undef, 3)
-    x = Union{Int, String}[i for i in 1:3]
-    fun(x)
+    nfiles = length(imgpointss)
 
-    with_distortion = false
-    objectPoints = OpenCV.InputArray[reshape(Matrix{Float32}(reduce(hcat, objpoints)), 3, 1, :) for _ in 1:length(imgpointss)]
+    objectPoints = OpenCV.InputArray[reshape(Matrix{Float32}(reduce(hcat, objpoints)), 3, 1, :) for _ in 1:nfiles]
     imagePoints = OpenCV.InputArray[reshape(Matrix{Float32}(reduce(hcat, imgpoints)), 2, 1, :) for imgpoints in imgpointss]
     imageSize = OpenCV.Size{Int32}(sz...)
-    cameraMatrix = OpenCV.Mat(rand(Float32, 3, 3, 1))
-    distCoeffs = OpenCV.Mat(rand(Float32, 3, 1, 1))
-
-    flags = OpenCV.CALIB_ZERO_TANGENT_DIST + OpenCV.CALIB_FIX_K3 + OpenCV.CALIB_FIX_K2 + (with_distortion ? 0 : OpenCV.CALIB_FIX_K1) + OpenCV.CALIB_FIX_ASPECT_RATIO
-
-    r = OpenCV.InputArray[reshape(Matrix{Float32}(reduce(hcat, objpoints)), 3, 1, :) for _ in 1:length(imgpointss)]
-    t = OpenCV.InputArray[reshape(Matrix{Float32}(reduce(hcat, objpoints)), 3, 1, :) for _ in 1:length(imgpointss)]
-
-    OpenCV.calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, r, t, flags, OpenCV.TermCriteria(1, 10, 1.0)) # this actually "works"
-
-    # next, I need to see what I should put in all the containers for this to work optimally (i.e. compare to a naive python example).
 
 
-
-
-
-
-calibrateCamera(objPoints, imgPoints, imgSize, cameraMatrix,
-                                distCoeffs, r, t, calibFlags);
-
-
-
-(::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
- ::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
- ::Int64, ::OpenCV.TermCriteria, ::typeof(OpenCV.calibrateCamera), ::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, ::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, ::OpenCV.Size{Int32}, ::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}, ::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}})
-
-
-
-calibrateCamera(objectPoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, 
-                imagePoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, 
-                imageSize::OpenCV.Size{Int32},
-                cameraMatrix::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}},
-                distCoeffs::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}};
-                rvecs, tvecs, flags, criteria) @ OpenCV ~/.julia/artifacts/dcc70861ed0ffc5427898f6aeb436620f33fa02f/OpenCV/src/cv_cxx_wrap.jl:2278
-
-calibrateCamera(objectPoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
-                imagePoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
-                imageSize::OpenCV.Size{Int32},
-                cameraMatrix::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}, distCoeffs::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}, rvecs::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, tvecs::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}}, flags::Int64, criteria::OpenCV.TermCriteria) @ OpenCV ~/.julia/artifacts/dcc70861ed0ffc5427898f6aeb436620f33fa02f/OpenCV/src/cv_cxx_wrap.jl:2275
-
-
-
-
-
-
-
-
-
-    OpenCV.calibrateCamera(objectPoints,
-                           imagePoints,
-                           imageSize,
-                           cameraMatrix,
-                           distCoeffs)
-
-
-
-
-    OpenCV.calibrateCamera(objectPoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
-                           imagePoints::Vector{Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}}},
-                           imageSize::OpenCV.Size{Int32},
-                           cameraMatrix::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}},
-                           distCoeffs::Union{OpenCV.CxxMat, AbstractArray{T, 3} where T<:Union{Float32, Float64, Int16, Int32, Int8, UInt16, UInt8}})
-
-
-
-
-    with_distortion = false
-    aspect = 1
-
-    flags = OpenCV.CALIB_ZERO_TANGENT_DIST + OpenCV.CALIB_FIX_K3 + OpenCV.CALIB_FIX_K2 + (with_distortion ? 0 : OpenCV.CALIB_FIX_K1) + OpenCV.CALIB_FIX_ASPECT_RATIO
     cammat = collect(I(3))
-    cammat[1,:] .= aspect
+    cammat[1,1] = aspect
+    cameraMatrix = OpenCV.Mat(Float32.(reshape(cammat, 1, 3, 3)))
+    distCoeffs = OpenCV.Mat(Array{Float32}(undef, 1, 1, 5))
 
-    nfiles = length(files)
+    flags = OpenCV.CALIB_ZERO_TANGENT_DIST + OpenCV.CALIB_FIX_K3 + OpenCV.CALIB_FIX_K2 + (with_distortion ? 0 : OpenCV.CALIB_FIX_K1) + OpenCV.CALIB_FIX_ASPECT_RATIO
 
-    objectPoints = fill(vec(Vector{Float32}.(objpoints)), length(files))
+    r = OpenCV.InputArray[Array{Float32}(undef, 3, 1, prod(n_corners)) for _ in 1:nfiles]
+    t = OpenCV.InputArray[Array{Float32}(undef, 3, 1, prod(n_corners)) for _ in 1:nfiles]
 
-    objectPoints = fill(vec(Vector{Int32}.(objpoints)), length(files))
+    x, mtx, dist, rvecs, tvecs = OpenCV.calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, r, t, flags, OpenCV.TermCriteria(3,100,0.01)) # this actually "works"
 
-    OpenCV.calibrateCamera(objectPoints, [reshape(reduce(hcat, imgpoints), 2, 1, 40) for imgpoints in imgpointss])#, sz, cammat, nothing; flags)
 
-    OpenCV.calibrateCamera(OpenCV.Mat(Int32.(reshape(reduce(hcat, objpoints), 3, 1, 40))), imgpointss, sz, cammat, nothing; flags)
-
-    k, _ = PyArray(py_dist)
+    k, _ = dist
     @assert with_distortion || k == 0 "distortion was $with_distortion but k isn't zero:" k
 
-    Rs = [vec(pyconvert(Matrix{Float64}, x)) for x in py_rvecs]
+    Rs = vec.(rvecs)
+    ts = vec.(tvecs)
 
-    ts = [vec(pyconvert(Matrix{Float64}, x)) for x in py_tvecs]
-
-    mtx = Matrix(PyArray(py_mtx))
+    mtx = reshape(mtx, 3, 3)
     frow = mtx[1,1]
     fcol = mtx[2,2]
-    # @show frow, fcol
     crow = mtx[1,3]
     ccol = mtx[2,3]
 
@@ -166,7 +85,9 @@ function detect_fit(_files, n_corners, with_distortion, aspect)
     objpoints = get_object_points(n_corners)
     sz = reverse(size(load(files[1])))
 
-    k, Rs, ts, frow, fcol, crow, ccol = fit_model(sz, fill(objpoints, length(files)), imgpointss, n_corners, with_distortion, aspect)
+
+
+    k, Rs, ts, frow, fcol, crow, ccol = fit_model(sz, objpoints, imgpointss, n_corners, with_distortion, aspect)
 
     return (; files, objpoints, imgpointss, sz, k, Rs, ts, frow, fcol, crow, ccol)
 end
